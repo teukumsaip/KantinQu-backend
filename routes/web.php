@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 
 // Homepage
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect()->route('admin-dashboard');
 });
 
 // Dashboard
