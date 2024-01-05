@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Transaction &raquo; {{ $item->food->name }} by {{ $item->user->name }}
+            Transaction &raquo; {{ optional($item->food)->name }} by {{ optional($item->user)->name }}
         </h2>
     </x-slot>
 
@@ -16,7 +16,9 @@
                         <div class="flex flex-wrap mb-3">
                             <div class="w-2/6">
                                 <div class="text-sm">Product Name</div>
-                                <div class="text-xl font-bold">{{ $item->food->name }}</div>
+                                <div class="text-xl font-bold">
+                                    {{ optional($item->food)->name ?: 'Food not available' }}
+                                </div>
                             </div>
                             <div class="w-1/6">
                                 <div class="text-sm">Quantity</div>
@@ -34,7 +36,9 @@
                         <div class="flex flex-wrap mb-3">
                             <div class="w-2/6">
                                 <div class="text-sm">User Name</div>
-                                <div class="text-xl font-bold">{{ $item->user->name }}</div>
+                                <div class="text-xl font-bold">
+                                    {{ optional($item->user)->name ?: 'User not available' }}
+                                </div>
                             </div>
                             <div class="w-3/6">
                                 <div class="text-sm">Email</div>

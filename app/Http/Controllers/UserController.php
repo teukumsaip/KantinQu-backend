@@ -2,145 +2,110 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Fortify\PasswordValidationRules;
-use App\Helpers\ResponseFormatter;
-use App\Http\Controllers\Controller;
+use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    use PasswordValidationRules;
-
     /**
-     * @param Request $request
-     * @return mixed
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
      */
-    public function fetch(Request $request)
+    public function index()
     {
-        return ResponseFormatter::success($request->user(),'Data profile user berhasil diambil');
-    }
+        $user = User::paginate(10);
 
-    /**
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     * @throws \Exception
-     */
-    public function login(Request $request)
-    {
-        try {
-            $request->validate([
-                'email' => 'email|required',
-                'password' => 'required'
-            ]);
-
-            $credentials = request(['email', 'password']);
-            if (!Auth::attempt($credentials)) {
-                return ResponseFormatter::error([
-                    'message' => 'Unauthorized'
-                ],'Authentication Failed', 500);
-            }
-
-            $user = User::where('email', $request->email)->first();
-            if ( ! Hash::check($request->password, $user->password, [])) {
-                throw new \Exception('Invalid Credentials');
-            }
-
-            $tokenResult = $user->createToken('authToken')->plainTextToken;
-            return ResponseFormatter::success([
-                'access_token' => $tokenResult,
-                'token_type' => 'Bearer',
-                'user' => $user
-            ],'Authenticated');
-        } catch (Exception $error) {
-            return ResponseFormatter::error([
-                'message' => 'Something went wrong',
-                'error' => $error,
-            ],'Authentication Failed', 500);
-        }
+        return view('users.index', [
+            'user' => $user,
+        ]);
     }
 
     /**
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     * @throws \Exception
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
      */
-    public function register(Request $request)
+    public function create()
     {
-        try {
-            $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'password' => $this->passwordRules()
-            ]);
-
-            User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'address' => $request->address,
-                'houseNumber' => $request->houseNumber,
-                'phoneNumber' => $request->phoneNumber,
-                'city' => $request->city,
-                'password' => Hash::make($request->password),
-            ]);
-
-            $user = User::where('email', $request->email)->first();
-
-            $tokenResult = $user->createToken('authToken')->plainTextToken;
-
-            return ResponseFormatter::success([
-                'access_token' => $tokenResult,
-                'token_type' => 'Bearer',
-                'user' => $user
-            ],'User Registered');
-        } catch (Exception $error) {
-            return ResponseFormatter::error([
-                'message' => 'Something went wrong',
-                'error' => $error,
-            ],'Authentication Failed', 500);
-        }
+        return view('users.create');
     }
 
-    public function logout(Request $request)
-    {
-        $token = $request->user()->currentAccessToken()->delete();
-
-        return ResponseFormatter::success($token,'Token Revoked');
-    }
-
-    public function updateProfile(Request $request)
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(UserRequest $request)
     {
         $data = $request->all();
 
-        $user = Auth::user();
-        $user->update($data);
+        $data['password'] = Hash::make($request->password);
+        $data['profile_photo_path'] = $request->file('profile_photo_path')->store('assets/user', 'public');
 
-        return ResponseFormatter::success($user,'Profile Updated');
+        User::create($data);
+
+        return redirect()->route('users.index');
     }
 
-    public function updatePhoto(Request $request)
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
     {
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|image|max:2048',
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(User $user)
+    {
+        return view('users.edit', [
+            'item' => $user
         ]);
+    }
 
-        if ($validator->fails()) {
-            return ResponseFormatter::error(['error'=>$validator->errors()], 'Update Photo Fails', 401);
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(UserRequest $request, User $user)
+    {
+        $data = $request->all();
+
+        if ($request->file('profile_photo_path')) {
+            $data['profile_photo_path'] = $request->file('profile_photo_path')->store('assets/user', 'public');
         }
+        $data['password'] = Hash::make($request->password);
 
-        if ($request->file('file')) {
+        $user->update($data);
 
-            $file = $request->file->store('assets/user', 'public');
+        return redirect()->route('users.index');
+    }
 
-            //store your file into database
-            $user = Auth::user();
-            $user->profile_photo_path = $file;
-            $user->update();
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(User $user)
+    {
+        $user->delete();
 
-            return ResponseFormatter::success([$file],'File successfully uploaded');
-        }
+        return redirect()->route('users.index');
     }
 }

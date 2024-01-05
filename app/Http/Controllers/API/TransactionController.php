@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Helpers\ResponseFormatter;
-use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use App\Helpers\ResponseFormatter;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Midtrans\Config;
 use Midtrans\Snap;
@@ -19,35 +19,47 @@ class TransactionController extends Controller
         $food_id = $request->input('food_id');
         $status = $request->input('status');
 
-        if($id)
-        {
-            $transaction = Transaction::with(['food','user'])->find($id);
 
-            if($transaction)
+
+        if ($id) {
+            $transaction = Transaction::with(['food', 'user'])->find($id);
+
+            if ($transaction) {
                 return ResponseFormatter::success(
                     $transaction,
                     'Data transaksi berhasil diambil'
                 );
-            else
+            } else {
                 return ResponseFormatter::error(
                     null,
                     'Data transaksi tidak ada',
                     404
                 );
+            }
         }
 
-        $transaction = Transaction::with(['food','user'])->where('user_id', Auth::user()->id);
+        $transaction = Transaction::with(['food', 'user'])->where('user_id', Auth::user()->id);
 
-        if($food_id)
+        if ($food_id) {
             $transaction->where('food_id', $food_id);
-
-        if($status)
+        }
+        if ($status) {
             $transaction->where('status', $status);
+        }
 
         return ResponseFormatter::success(
             $transaction->paginate($limit),
             'Data list transaksi berhasil diambil'
         );
+    }
+
+    public function update(Request $request, $id)
+    {
+        $transaction = Transaction::findOrFail($id);
+
+        $transaction->update($request->all());
+
+        return ResponseFormatter::success($transaction, 'Transaksi berhasil diperbarui');
     }
 
     public function checkout(Request $request)
@@ -66,54 +78,40 @@ class TransactionController extends Controller
             'quantity' => $request->quantity,
             'total' => $request->total,
             'status' => $request->status,
-            'payment_url' => ''
+            'payment_url' => '',
         ]);
 
-        // Konfigurasi midtrans
         Config::$serverKey = config('services.midtrans.serverKey');
         Config::$isProduction = config('services.midtrans.isProduction');
         Config::$isSanitized = config('services.midtrans.isSanitized');
         Config::$is3ds = config('services.midtrans.is3ds');
 
-        // Panggil transaksi yang telah dibuat
-        $transaction = Transaction::with(['food','user'])->find($transaction->id);
+        $transaction = Transaction::with(['food', 'user'])->find($transaction->id);
 
-        //membuat transaksi midtrans
-        $midtrans = array(
-            'transaction_details' => array(
-                'order_id' =>  $transaction->id,
+        $midtrans = [
+            'transaction_details' => [
+                'order_id' => $transaction->id,
                 'gross_amount' => (int) $transaction->total,
-            ),
-            'customer_details' => array(
-                'first_name'    => $transaction->user->name,
-                'email'         => $transaction->user->email
-            ),
-            'enabled_payments' => array('gopay','bank_transfer'),
-            'vtweb' => array()
-        );
+            ],
+            'customer_details' => [
+                'first_name' => $transaction->user->name,
+                'email' => $transaction->user->email,
+            ],
+            'enabled_payments' => [
+                'gopay', 'bank_transfer'
+            ],
+            'vtweb' => []
+        ];
 
-        // Memanggil midtrans
         try {
-            // Ambil halaman payment midtrans
             $paymentUrl = Snap::createTransaction($midtrans)->redirect_url;
 
             $transaction->payment_url = $paymentUrl;
             $transaction->save();
 
-            // Redirect ke halaman midtrans
-            return ResponseFormatter::success($transaction,'Transaksi berhasil');
+            return ResponseFormatter::success($transaction, 'Transaksi berhasil');
+        } catch (Exception $e) {
+            return ResponseFormatter::error($e->getMessage(), 'Transaksi gagal');
         }
-        catch (Exception $e) {
-            return ResponseFormatter::error($e->getMessage(),'Transaksi Gagal');
-        }
-    }
-
-    public function update(Request $request, $id)
-    {
-        $transaction = Transaction::findOrFail($id);
-
-        $transaction->update($request->all());
-
-        return ResponseFormatter::success($transaction,'Transaksi berhasil diperbarui');
     }
 }
