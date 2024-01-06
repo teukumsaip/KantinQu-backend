@@ -10,9 +10,9 @@
             <div class="w-full rounded overflow-hidden shadow-lg px-6 py-6 bg-white">
                 <div class="flex flex-wrap -mx-4 -mb-4 md:mb-0">
                     <div class="w-full md:w-1/6 px-4 mb-4 md:mb-0">
-                        <img src="{{ $item->food->picturePath }}" alt="" class="w-full rounded">
+                        <img src="{{ optional($item->food)->picturePath ?? 'path_to_default_image.jpg' }}" alt="" class="w-full rounded">
                     </div>
-                    <div class="w-full md:w-5/6 px-4 mb-4 md:mb-0">
+                   <div class="w-full md:w-5/6 px-4 mb-4 md:mb-0">
                         <div class="flex flex-wrap mb-3">
                             <div class="w-2/6">
                                 <div class="text-sm">Product Name</div>
@@ -36,9 +36,7 @@
                         <div class="flex flex-wrap mb-3">
                             <div class="w-2/6">
                                 <div class="text-sm">User Name</div>
-                                <div class="text-xl font-bold">
-                                    {{ optional($item->user)->name ?: 'User not available' }}
-                                </div>
+                                <div class="text-xl font-bold">{{ $item->user->name }}</div>
                             </div>
                             <div class="w-3/6">
                                 <div class="text-sm">Email</div>
